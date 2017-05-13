@@ -271,6 +271,7 @@ A command line utility to control a running vlc player instance.
 Lets you control a running instance of vlc player, start a new instance, get track information, etc.
 
 ~~~~
+$ sudo apt-get install python-dbus
 $ sudo pip install vlc-ctrl
 ~~~~
 
