@@ -295,7 +295,7 @@ $ sudo apt-get install git
 
 ~~~~
 $ cd /home/pi/
-$ git clone https://github.com/MiczFlor/RPi-Jukebox-RFID.git
+$ git clone https://github.com/hankman13/RPi-Jukebox-RFID.git
 ~~~~
 
 ## Reboot your Raspberry Pi
