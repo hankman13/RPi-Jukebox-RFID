@@ -265,6 +265,23 @@ $ sudo sed -i 's/geteuid/getppid/' /usr/bin/vlc
 
 **Note:** changing the binary of VLC to allow the program to be run by the webserver as a superuser is another little step in a long string of potential security problems. In short: the jukebox is a perfectly fine project to run for your personal pleasure. It's not fit to run on a public server.
 
+## Install LXDE
+
+LXDE is a desktop environment build upon the X Window System. This uses LightDM as X display manager. 
+Install xserver, lxde, lightdm:
+
+~~~~
+$ sudo apt-get install --no-install-recommends xserver-xorg xutils
+$ sudo apt-get install --no-install-recommends lxde-core lxappearance
+$ sudo apt-get install --no-install-recommends lightdm
+~~~~
+
+Configure display manager for autologin:
+
+~~~~
+$ sudo nano /etc/lightdm/lightdm.conf
+~~~~
+
 ## Install VLC-CTRL
 
 A command line utility to control a running vlc player instance.
@@ -292,6 +309,10 @@ $ sudo apt-get update
 $ sudo apt-get install git
 ~~~~
 
+~~~~
+autologin-user=pi
+~~~~
+
 ## Install the jukebox code
 
 ~~~~
@@ -304,7 +325,7 @@ $ git clone https://github.com/hankman13/RPi-Jukebox-RFID.git
 Ok, after all of this, it's about time to reboot your jukebox. Make sure you have the static IP address at hand to login over SSH after the reboot.
 
 ~~~~
-sudo reboot
+$ sudo reboot
 ~~~~
 
 # Configure the jukebox
