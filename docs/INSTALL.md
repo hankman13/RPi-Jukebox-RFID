@@ -282,6 +282,10 @@ Configure display manager for autologin:
 $ sudo nano /etc/lightdm/lightdm.conf
 ~~~~
 
+~~~~
+autologin-user=pi
+~~~~
+
 ## Install VLC-CTRL
 
 A command line utility to control a running vlc player instance.
@@ -307,10 +311,6 @@ $ sudo apt-get install mpg123
 ~~~~
 $ sudo apt-get update
 $ sudo apt-get install git
-~~~~
-
-~~~~
-autologin-user=pi
 ~~~~
 
 ## Install the jukebox code
