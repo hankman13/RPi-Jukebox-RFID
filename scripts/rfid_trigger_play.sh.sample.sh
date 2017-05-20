@@ -28,7 +28,11 @@ CMDVOL85="85"
 CMDVOL90="90"
 CMDVOL95="95"
 CMDVOL100="100"
+CMDVOLUP="up"
+CMDVOLDWN="down"
 CMDSTOP="stop"
+CMDNEXT="next"
+CMDPREV="prev"
 CMDSHUTDOWN="halt"
 
 # The absolute path to the folder whjch contains all the scripts.
@@ -52,6 +56,13 @@ done
 
 # Set the date and time of now
 NOW=`date +%Y-%m-%d.%H:%M:%S`
+
+# If pipe not exist, create one
+PIPE=.mpv_control
+if [ ! -p "$PIPE" ];
+then
+mkfifo "$PIPE"
+fi
 
 # If the input is of 'special' use, don't treat it like a trigger to play audio.
 # Special uses are for example volume changes, skipping, muting sound.
@@ -88,15 +99,32 @@ elif [ "$CARDID" == "$CMDVOL100" ]
 then
     amixer sset 'PCM' 100%
 
+elif [ "$CARDID" == "$CMDVOLUP" ]
+then
+    echo add volume 10 > "$PIPE"
+
+elif [ "$CARDID" == "$CMDVOLDWN" ]
+then
+    echo add volume -10 > "$PIPE"
+
+
 elif [ "$CARDID" == "$CMDSTOP" ]
 then
-    # kill all running VLC media players
-    sudo pkill vlc
+    echo quit > "$PIPE"
+
+elif [ "$CARDID" == "$CMDNEXT" ]
+then
+    echo playlist-next > "$PIPE"
+
+elif [ "$CARDID" == "$CMDPREV" ]
+then
+    echo playlist-prev > "$PIPE"
+
 
 elif [ "$CARDID" == "$CMDSHUTDOWN" ]
 then
     # shutdown the RPi nicely
-    sudo halt
+    sudo shutdown now -h
 
 else
     # We checked if the card was a special command, seems it wasn't.
@@ -150,7 +178,7 @@ else
         PLAYLIST=""
 
         # loop through all the files found in the folder
-        for FILE in $PATHDATA/../shared/audiofolders/$FOLDERNAME/*
+        for FILE in $PATHDATA/../shared/audiofolders/$FOLDERNAME/*.mp3
         do
             # add file path to playlist followed by line break
             PLAYLIST=$PLAYLIST$FILE$'\n'
@@ -160,11 +188,27 @@ else
         # wrap $PLAYLIST string in "" to keep line breaks
         echo "$PLAYLIST" > $PATHDATA/../playlists/$FOLDERNAME.m3u
 
-        # first kill any possible running vlc processn => stop playing audio
-        sudo pkill vlc
+      	#Check if Playlist should be shuffled
+        if grep -Fxq "$CARDID" $PATHDATA/../shared/shuffle.txt
+        then
+      	# first kill any possible running vlc processn => stop playing audio
+              sudo pkill mpv
 
-        # now start the command line version of vlc loading the playlist
-        # start as a background process (command &) - otherwise the input only works once the playlist finished
-        (cvlc $PATHDATA/../playlists/$FOLDERNAME.m3u &)
+              # now start the command line version of vlc loading the playlist
+              # start as a background process (command &) - otherwise the input only works once the playlist finished
+              #(cvlc $PATHDATA/../playlists/$FOLDERNAME.m3u &)
+              (mpv --no-audio-display --shuffle --input-file=$PIPE --playlist=$PATHDATA/../playlists/$FOLDERNAME.m3u &)
+
+        else
+              # first kill any possible running vlc processn => stop playing audio
+              sudo pkill mpv
+
+              # now start the command line version of vlc loading the playlist
+              # start as a background process (command &) - otherwise the input only works once the playlist finished
+              #(cvlc $PATHDATA/../playlists/$FOLDERNAME.m3u &)
+              (mpv --no-audio-display --input-file=$PIPE --playlist=$PATHDATA/../playlists/$FOLDERNAME.m3u &)
+
+        fi
+
     fi
 fi
