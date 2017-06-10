@@ -16,6 +16,11 @@ What makes this jukebox easy to install and use:
 * Play single or multiple files, even mix them with web streams.
 * Volume control is also done with RFID cards or key fobs.
 
+What is different from MiczFlor/RPi-Jukebox-RFID:
+
+* no Web-Interface
+* uses mpv instead of VLC, because it's easier to manipulate the mpv instance via pipe (next, previous songs ...)
+* can run as a headless server, no Desktop-environment is needed, so can run on my old Raspberry Pi 1
 
 ## Installation
 
