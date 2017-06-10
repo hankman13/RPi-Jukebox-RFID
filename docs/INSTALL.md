@@ -71,99 +71,6 @@ $ sudo raspi-config
 
 Select `Boot options` and then `Desktop / CLI`. The option you want to pick is `Console Autologin - Text console, automatically logged in as 'pi' user`.
 
-### Set a static IP address for your RPi
-
-To be able to log into your RPi over SSH from any machine in the network, you need to give your machine a static IP address.
-
-Check if the DHCP client daemon (DHCPCD) is active.
-~~~~
-sudo service dhcpcd status
-~~~~
-If you don't get any status, you should start the `dhcpcd` daemon:
-~~~~
-sudo service dhcpcd start
-sudo systemctl enable dhcpcd
-~~~~
-Check the IP address the RPi is running on at the moment:
-~~~~
-$ ifconfig
-
-wlan0     Link encap:Ethernet  HWaddr 74:da:38:28:72:72  
-          inet addr:192.168.178.82  Bcast:192.168.178.255  Mask:255.255.255.0
-          ...
-~~~~
-You can see that the IP address is 192.168.178.82. We want to assign a static address 192.168.178.199.
-
-**Note:** assigning a static address can create conflict with other devices on the same network which might get the same address assigned. Therefore, if you can, check your router configuration and see if you can assign a range of IP addresses for static use.
-
-Change the IPv4 configuration inside the file `/etc/dhcpcd.conf`.
-~~~~
-sudo nano /etc/dhcpcd.conf
-~~~~
-In my case, I added the following lines to assign the static IP. You need to adjust this to your network needs:
-
-~~~~
-interface wlan0
-static ip_address=192.168.178.199/24
-static routers=192.168.178.1
-static domain_name_servers=192.168.178.1
-~~~~
-Save the changes with `Ctrl & O` then `Enter` then `Ctrl & X`.
-
-## Install samba to share folders over your home network
-
-To make the jukebox easy to administer, it is important that you can add new songs and register new RFID cards over your home network. This can be done from any machine. The way to integrate your RPi into your home network is using *Samba*, the standard [Windows interoperability suite for Linux and Unix](https://www.samba.org/).
-
-Open a terminal and install the required packages with this line:
-
-~~~~
-$ sudo apt-get install samba samba-common-bin 
-~~~~
-
-First, let's edit the *Samba* configuration file and define the workgroup the RPi should be part of.
-
-~~~~
-$ sudo nano /etc/samba/smb.conf
-~~~~
-
-Edit the entries for workgroup and wins support:
-
-~~~~
-workgroup = WORKGROUP
-wins support = yes
-~~~~
-
-If you are already running a windows home network, add the name of the network where I have added `WORKGROUP`. 
-
-Now add the specific folder that we want to be exposed to the home network in the `smb.conf` file. 
-
-~~~~
-[pi_jukebox]
-   comment= Pi Jukebox
-   path=/home/pi/RPi-Jukebox-RFID/shared
-   browseable=Yes
-   writeable=Yes
-   only guest=no
-   create mask=0777
-   directory mask=0777
-   public=no
-~~~~
-
-**Note:** the `path` given in this example works (only) if you are installing the jukebox code in the directory `/home/pi/`.
-
-Finally, add the user `pi` to *Samba*. For simplicity and against better knowledge regarding security, I suggest to stick to the default user and password:
-
-~~~~
-user     : pi
-password : raspberry
-~~~~
-
-Type the following to add the new user:
-
-~~~~
-$ sudo smbpasswd -a pi
-~~~~
-
 ## Adding python libraries
 
 ### Installing evdev
@@ -193,107 +100,14 @@ Now the system is ready to load the important package for the python code we use
 $ sudo pip install evdev
 ~~~~
 
-## Running the web app
+## Install the media player mpv 
 
-There is a second way to control the RFID jukebox: through the browser. You can open a browser on your phone or computer and type in the static IP address that we assigned to the RPi earlier. As long as your phone or PC are connected to the same WiFi network that the RPi is connected to, you will see the web app in your browser.
+The mpv media player not only plays almost everything (local files, web streams, playlists, folders).
 
-### Installing lighttpd and PHP
-
-~~~~
-$ sudo apt-get install lighttpd php5-common php5-cgi php5
-~~~~
-
-### Configuring lighttpd
-
-Open the configuration file:
+Install *mpv*
 
 ~~~~
-$ sudo nano /etc/lighttpd/lighttpd.conf
-~~~~
-
-Change the document root, meaning the folder where the webserver will look for things to display or do when somebody types in the static IP address. To point it to the Jukebox web app, change the line in the configuration to:
-
-~~~~
-server.document-root = "/home/pi/RPi-Jukebox-RFID/htdocs"
-~~~~
-
-The webserver is usually not very powerful when it comes to access to the system it is running on. From a security point of view, this is a very good concept: you don't want a website to potentially change parts of the operating system which should be locked away from any public access.
-
-We do need to give the webserver more access in order to run a web app that can start and stop processes on the RPi. To make this happen, we need to add the webserver to the list of users/groups allowed to run commands as superuser. To do so, open the list of sudo users in the nano editor:
-
-~~~~
-$ sudo nano /etc/sudoers
-~~~~
-
-And at the bottom of the file, add the following line:
-
-~~~~
-www-data ALL=(ALL) NOPASSWD: ALL
-~~~~
-
-The final step to make the RPi web app ready is to tell the webserver how to execute PHP. To enable the lighttpd server to execute php scripts, the fastcgi-php module must be enabled.
-
-~~~~
-$ sudo lighty-enable-mod fastcgi-php
-~~~~
-
-Now we can reload the webserver with the command:
-
-~~~~
-$ sudo service lighttpd force-reload
-~~~~
-
-Next on the list is the media player which will play the audio files and playlists: VLC. In the coming section you will also learn more about why we gave the webserver more power over the system by adding it to the list of `sudo` users.
-
-## Install the media player VLC 
-
-The VLC media player not only plays almost everything (local files, web streams, playlists, folders), it also comes with a command line interface `CLVC` which we will be using to play media on the jukebox.
-
-Install *VLC*
-
-~~~~
-sudo apt-get install vlc
-~~~~
-
-Ok, the next step is a severe hack. Quite a radical tweak: we will change the source code of the VLC binary file. We need to do this so that we can control the jukebox also over the web app. VLC was designed not to be run with the power of a superuser. In order to trigger VLC from the webserver, this is exactly what we are doing.
-
-Changing the binary code is only a one liner, replacing `geteuid` with `getppid`. If you are interested in the details what this does, you can [read more about the VLC hack here](https://www.blackmoreops.com/2015/11/02/fixing-vlc-is-not-supposed-to-be-run-as-root-sorry-error/).
-
-~~~~
-$ sudo sed -i 's/geteuid/getppid/' /usr/bin/vlc
-~~~~
-
-**Note:** changing the binary of VLC to allow the program to be run by the webserver as a superuser is another little step in a long string of potential security problems. In short: the jukebox is a perfectly fine project to run for your personal pleasure. It's not fit to run on a public server.
-
-## Install LXDE
-
-LXDE is a desktop environment build upon the X Window System. This uses LightDM as X display manager. 
-Install xserver, lxde, lightdm:
-
-~~~~
-$ sudo apt-get install --no-install-recommends xserver-xorg xutils
-$ sudo apt-get install --no-install-recommends lxde-core lxappearance
-$ sudo apt-get install --no-install-recommends lightdm
-~~~~
-
-Configure display manager for autologin:
-
-~~~~
-$ sudo nano /etc/lightdm/lightdm.conf
-~~~~
-
-~~~~
-autologin-user=pi
-~~~~
-
-## Install VLC-CTRL
-
-A command line utility to control a running vlc player instance.
-Lets you control a running instance of vlc player, start a new instance, get track information, etc.
-
-~~~~
-$ sudo apt-get install python-dbus
-$ sudo pip install vlc-ctrl
+sudo apt-get install mpv
 ~~~~
 
 ## Install mpg123
